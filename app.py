@@ -111,7 +111,7 @@ def sensor():
     update_all()
 
 sched = BackgroundScheduler(daemon=True)
-sched.add_job(sensor,'interval',minutes=1)
+sched.add_job(sensor,'interval',minutes=1440)
 sched.start()
 
 app = Flask(__name__)
