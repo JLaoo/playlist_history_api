@@ -1,7 +1,7 @@
 from flask import Flask, abort, jsonify
 from flask_cors import CORS
+from flask_pymongo import PyMongo
 from werkzeug.exceptions import HTTPException
-import pymongo
 import requests
 import json
 
@@ -13,10 +13,13 @@ with open('credentials.txt') as f:
 youtube_api_key = lines[0][len("youtube_api_key="):].strip()
 mongo_user = lines[1][len("mongo_user="):].strip()
 mongo_pw = lines[2][len("mongo_pw="):].strip()
-mongo_access_str = "mongodb+srv://{}:{}@cluster0.nhgsz.mongodb.net/?retryWrites=true&w=majority".format(mongo_user, mongo_pw)
+mongo_access_str = "mongodb+srv://{}:{}@cluster0.nhgsz.mongodb.net/data?retryWrites=true&w=majority".format(mongo_user, mongo_pw)
 
-client = pymongo.MongoClient(mongo_access_str)
-col = client.data.data
+app = Flask(__name__)
+app.config["MONGO_URI"] = mongo_access_str
+client = PyMongo(app)
+col = client.db.data
+CORS(app)
 
 all_id_list_key = "list_of_all_ids"
 
@@ -107,9 +110,6 @@ def add_to_list(new_id):
     else:
         col.update_one({'_id': all_id_list_key}, {'$push': {'ids': new_id}})
 
-app = Flask(__name__)
-CORS(app)
-
 @app.route('/lookup/<string:list_id>')
 def lookup(list_id):
     return update(list_id)
@@ -126,3 +126,7 @@ def handle_error(e):
     if isinstance(e, HTTPException):
         code = e.code
     return jsonify(error=str(e)), code
+
+
+if __name__ == '__main__':
+    app.run()
