@@ -118,7 +118,7 @@ def lookup(list_id):
 def update_all_ids():
     update_all()
     print("all updated")
-    return json.dumps({'success':True}), 200, {'ContentType':'application/json'} 
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
 
 @app.errorhandler(Exception)
 def handle_error(e):
@@ -126,7 +126,3 @@ def handle_error(e):
     if isinstance(e, HTTPException):
         code = e.code
     return jsonify(error=str(e)), code
-
-
-if __name__ == '__main__':
-   app.run()
