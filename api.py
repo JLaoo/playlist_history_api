@@ -1,6 +1,5 @@
 from flask import Flask, abort, jsonify
 from flask_cors import CORS
-from apscheduler.schedulers.background import BackgroundScheduler
 from werkzeug.exceptions import HTTPException
 import pymongo
 import requests
@@ -108,21 +107,18 @@ def add_to_list(new_id):
     else:
         col.update_one({'_id': all_id_list_key}, {'$push': {'ids': new_id}})
 
-def sensor():
-    """ Function for test purposes. """
-    update_all()
-    print("all updated")
-
-sched = BackgroundScheduler(daemon=True)
-sched.add_job(sensor,'interval',minutes=1)
-sched.start()
-
 app = Flask(__name__)
 CORS(app)
 
 @app.route('/lookup/<string:list_id>')
 def lookup(list_id):
     return update(list_id)
+
+@app.route('/updateall')
+def update_all_ids():
+    update_all()
+    print("all updated")
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'} 
 
 @app.errorhandler(Exception)
 def handle_error(e):
