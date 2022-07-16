@@ -1,7 +1,9 @@
 from flask import Flask, abort, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
+from datetime import date
 from werkzeug.exceptions import HTTPException
+from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 import json
 import os
@@ -12,12 +14,6 @@ mongo_pw = os.getenv('MONGO_PASS')
 mongo_access_str = "mongodb+srv://{}:{}@cluster0.nhgsz.mongodb.net/data?retryWrites=true&w=majority".format(mongo_user, mongo_pw)
 
 all_id_list_key = "list_of_all_ids"
-
-app = Flask(__name__)
-app.config["MONGO_URI"] = mongo_access_str
-client = PyMongo(app)
-col = client.db.data
-CORS(app)
 
 def get_playlist_objs(list_id):
     objs = []
@@ -82,7 +78,9 @@ def update(list_id):
                 playlist_item['url'] = item[1]
                 added_arr.append(playlist_item)
 
-            cur_update = {'deleted': deleted_arr, 'added': added_arr}
+            update_idx = len(doc['updates'])
+
+            cur_update = {'index': update_idx, 'deleted': deleted_arr, 'added': added_arr, 'date': str(date.today())}
 
             col.update_one({'_id': list_id}, {'$push': {'updates': cur_update}})
             col.update_one({'_id': list_id}, {'$set': {'cur_state': cur_state}})
@@ -108,6 +106,20 @@ def add_to_list(new_id):
     else:
         col.update_one({'_id': all_id_list_key}, {'$push': {'ids': new_id}})
 
+def sensor():
+    print("all updated")
+    update_all()
+
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(sensor,'interval',minutes=1)
+sched.start()
+
+app = Flask(__name__)
+app.config["MONGO_URI"] = mongo_access_str
+client = PyMongo(app)
+col = client.db.data
+CORS(app)
+
 @app.route("/")
 def index():
     return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
@@ -123,8 +135,6 @@ def handle_error(e):
     if isinstance(e, HTTPException):
         code = e.code
     return jsonify(error=str(e)), code
-
-
 
 
 
