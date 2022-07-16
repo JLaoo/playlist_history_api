@@ -15,10 +15,16 @@ mongo_access_str = "mongodb+srv://{}:{}@cluster0.nhgsz.mongodb.net/data?retryWri
 
 all_id_list_key = "list_of_all_ids"
 
-def get_playlist_objs(list_id):
+def delete(list_id):
+    col.update_one({'_id': all_id_list_key}, {'$pull': {'ids': list_id}})
+    col.delete_one({'_id': list_id})
+
+def get_playlist_objs(list_id, from_update_all):
     objs = []
     r = requests.get("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId={}&key={}".format(list_id, youtube_api_key))
     if r.status_code == 404:
+        if from_update_all:
+            delete(list_id)
         raise Exception("Invalid Playlist ID")
     while True:
         json_obj = json.loads(r.text)
@@ -39,8 +45,8 @@ def get_playlist_state(objs):
     playlist_state.sort(key = lambda x : x['title'])
     return playlist_state
 
-def update(list_id):
-    objs = get_playlist_objs(list_id)
+def update(list_id, from_update_all):
+    objs = get_playlist_objs(list_id, from_update_all)
     query = { "_id": list_id }
     doc = col.find_one(query)
     if doc is None:
@@ -93,7 +99,7 @@ def update_all():
     if doc is not None:
         ids = doc['ids']
         for _id in ids:
-            update(_id)
+            update(_id, True)
 
 def add_to_list(new_id):
     query = { "_id": all_id_list_key }
@@ -107,7 +113,6 @@ def add_to_list(new_id):
         col.update_one({'_id': all_id_list_key}, {'$push': {'ids': new_id}})
 
 def sensor():
-    print("all updated")
     update_all()
 
 sched = BackgroundScheduler(daemon=True)
@@ -126,8 +131,7 @@ def index():
 
 @app.route('/lookup/<string:list_id>')
 def lookup(list_id):
-    return update(list_id)
-
+    return update(list_id, False)
 
 @app.errorhandler(Exception)
 def handle_error(e):
@@ -135,6 +139,3 @@ def handle_error(e):
     if isinstance(e, HTTPException):
         code = e.code
     return jsonify(error=str(e)), code
-
-
-
