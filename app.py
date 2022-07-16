@@ -10,4 +10,4 @@ mongo_access_str = "mongodb+srv://{}:{}@cluster0.nhgsz.mongodb.net/data?retryWri
 
 @app.route("/")
 def index():
-    mongo_access_str
+    return mongo_access_str
